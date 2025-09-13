@@ -28,9 +28,26 @@ public:
 
 class Board
 {
-    Box grid[3][3];
+     Box** grid;
+    int size;
 
 public:
+
+ Board(){
+        size=3;
+        grid = new Box*[size];
+        for(int i = 0; i < size; i++) {
+            grid[i] = new Box[size]; 
+        }
+    }
+
+    ~Board() { 
+        for(int grp23 = 0; grp23 < size; grp23++) {
+            delete[] grid[grp23];
+        }
+        delete[] grid;
+    }
+
     void display()
     {
         int index = 1;
@@ -40,7 +57,7 @@ public:
             {
                 if (grid[i][j].isempty())
                 {
-                    cout << index;
+                    cout << " ";
                 }
                 else
                 {
