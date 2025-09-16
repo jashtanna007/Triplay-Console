@@ -1,6 +1,8 @@
 #include <iostream>
 using namespace std;
 
+// -------------------------Box Class-----------------------------
+
 class Box
 {
     char mark;
@@ -26,24 +28,29 @@ public:
     }
 };
 
+// --------------------------Board Class-----------------------------
+
 class Board
 {
-     Box** grid;
+    Box **grid;
     int size;
 
 public:
-
- Board(){
-        size=3;
-        grid = new Box*[size];
-        for(int i = 0; i < size; i++) {
-            grid[i] = new Box[size]; 
+    Board()
+    {
+        size = 3;
+        grid = new Box *[size];
+        for (int i = 0; i < size; i++) // create a 3 by 3 board
+        {
+            grid[i] = new Box[size];
         }
     }
 
-    ~Board() { 
-        for(int grp23 = 0; grp23 < size; grp23++) {
-            delete[] grid[grp23];
+    ~Board()
+    {
+        for (int k = 0; k < size; k++)
+        {
+            delete[] grid[k];
         }
         delete[] grid;
     }
@@ -77,6 +84,7 @@ public:
             cout << endl;
         }
     }
+
     bool place(int pos, char symbol)
     {
         int row = (pos - 1) / 3;
@@ -88,7 +96,42 @@ public:
         }
         return false;
     }
+
+    friend bool checkWinner(Board &b, char symbol);
 };
+
+bool checkWinner(Board &b, char symbol)
+{
+    for (int i = 0; i < 3; i++)
+    {
+        if (b.grid[i][0].getmark() == symbol &&
+            b.grid[i][1].getmark() == symbol &&
+            b.grid[i][2].getmark() == symbol)
+            return true;
+    }
+
+    for (int j = 0; j < 3; j++)
+    {
+        if (b.grid[0][j].getmark() == symbol &&
+            b.grid[1][j].getmark() == symbol &&
+            b.grid[2][j].getmark() == symbol)
+            return true;
+    }
+
+    if (b.grid[0][0].getmark() == symbol &&
+        b.grid[1][1].getmark() == symbol &&
+        b.grid[2][2].getmark() == symbol)
+        return true;
+
+    if (b.grid[0][2].getmark() == symbol &&
+        b.grid[1][1].getmark() == symbol &&
+        b.grid[2][0].getmark() == symbol)
+        return true;
+
+    return false;
+}
+
+// --------------------------int main------------------------------
 
 int main()
 {
@@ -101,8 +144,6 @@ int main()
     if (choice == 1)
     {
         Board bd;
-        // cout << "\nthe x is printing in the first row\n";
-        // bd.place(1, 'X');
         int movesCount = 0;
         char currSymbol = 'X';
         string username1;
@@ -135,18 +176,24 @@ int main()
             }
             else
             {
-                if(currSymbol == 'X' ){
+                if (checkWinner(bd, currSymbol))
+                {
+                    bd.display();
+                    cout << currentPlayer << " WINS!\n";
+                    return 0;
+                }
+
+                if (currSymbol == 'X')
                     currSymbol = 'O';
-                }
-                else{
+                else
                     currSymbol = 'X';
-                }
-                bd.place(position, currSymbol);
+
                 movesCount++;
             }
         }
 
         bd.display();
+        cout << "It's a draw!\n";
     }
     else
     {
