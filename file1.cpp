@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 using namespace std;
 
 // -------------------------Box Class-----------------------------
@@ -55,31 +56,44 @@ public:
         delete[] grid;
     }
 
-    void display()
+    void display(vector<pair<int, int>> winCell = {})
     {
-        int index = 1;
         for (int i = 0; i < 3; i++)
         {
             for (int j = 0; j < 3; j++)
             {
-                if (grid[i][j].isempty())
+                bool winBox = false;
+                for (auto &p : winCell)
                 {
-                    cout << " ";
+                    if (p.first == i && p.second == j)
+                    {
+                        winBox = true;
+                        break;
+                    }
+                }
+
+                char m = grid[i][j].getmark();
+                if (m == ' ')
+                {
+                    cout << "   ";
+                }
+                else if (winBox)
+                {
+                    cout << " \033[32m" << m << "\033[0m ";
                 }
                 else
                 {
-                    cout << grid[i][j].getmark();
+                    cout << " " << m << " ";
                 }
                 if (j < 2)
                 {
                     cout << " | ";
                 }
-                index++;
             }
             cout << endl;
             if (i < 2)
             {
-                cout << "--#---#--";
+                cout << "----#-----#----";
             }
             cout << endl;
         }
@@ -97,17 +111,17 @@ public:
         return false;
     }
 
-    friend bool checkWinner(Board &b, char symbol);
+    friend vector<pair<int, int>> WinLine(Board &b, char symbol);
 };
 
-bool checkWinner(Board &b, char symbol)
+vector<pair<int, int>> WinLine(Board &b, char symbol)
 {
     for (int i = 0; i < 3; i++)
     {
         if (b.grid[i][0].getmark() == symbol &&
             b.grid[i][1].getmark() == symbol &&
             b.grid[i][2].getmark() == symbol)
-            return true;
+            return {{i, 0}, {i, 1}, {i, 2}};
     }
 
     for (int j = 0; j < 3; j++)
@@ -115,20 +129,20 @@ bool checkWinner(Board &b, char symbol)
         if (b.grid[0][j].getmark() == symbol &&
             b.grid[1][j].getmark() == symbol &&
             b.grid[2][j].getmark() == symbol)
-            return true;
+            return {{0, j}, {1, j}, {2, j}};
     }
 
     if (b.grid[0][0].getmark() == symbol &&
         b.grid[1][1].getmark() == symbol &&
         b.grid[2][2].getmark() == symbol)
-        return true;
+        return {{0, 0}, {1, 1}, {2, 2}};
 
     if (b.grid[0][2].getmark() == symbol &&
         b.grid[1][1].getmark() == symbol &&
         b.grid[2][0].getmark() == symbol)
-        return true;
+        return {{0, 2}, {1, 1}, {2, 0}};
 
-    return false;
+    return {};
 }
 
 // --------------------------int main------------------------------
@@ -143,57 +157,103 @@ int main()
     cout << endl;
     if (choice == 1)
     {
-        Board bd;
-        int movesCount = 0;
-        char currSymbol = 'X';
+
         string username1;
         string username2;
-        cout << "ENter Player1 name \n";
+        cout << "ENter Player1 name: ";
         cin >> username1;
-        cout << "ENter Player2 name \n";
+        cout << "\nENter Player2 name: ";
         cin >> username2;
+        int series;
+        cout << "\nbest of series(1/3/5): ";
+        cin >> series;
+        cout << endl;
 
-        string currentPlayer;
-
-        while (movesCount < 9)
+        int minwins = (series / 2) + 1;
+        int p1Score = 0, p2Score = 0;
+        int round = 0;
+        while (p1Score < minwins && p2Score < minwins && round < series)
         {
-            bd.display();
-            if (currSymbol == 'X')
+            round++;
+            cout << "---------------Round " << round << "---------------\n\n";
+            Board bd;
+            int movesCount = 0;
+            char currSymbol = 'X';
+            if (round % 2 == 0)
             {
-                currentPlayer = username1;
+                currSymbol = 'O';
             }
             else
             {
-                currentPlayer = username2;
+                currSymbol = 'X';
             }
-            cout << endl
-                 << currentPlayer << "(" << currSymbol << ")" << "Enter position (1-9)" << endl;
-            int position;
-            cin >> position;
-            if (!bd.place(position, currSymbol))
-            {
-                cout << "Not a valid move !!! Enter a correct \n";
-            }
-            else
-            {
-                if (checkWinner(bd, currSymbol))
-                {
-                    bd.display();
-                    cout << currentPlayer << " WINS!\n";
-                    return 0;
-                }
 
+            string currentPlayer;
+
+            while (movesCount < 9)
+            {
+
+                bd.display();
                 if (currSymbol == 'X')
-                    currSymbol = 'O';
+                {
+                    currentPlayer = username1;
+                }
                 else
-                    currSymbol = 'X';
+                {
+                    currentPlayer = username2;
+                }
+                cout << endl
+                     << currentPlayer << "(" << currSymbol << ")" << "Enter position (1-9): ";
+                int position;
+                cin >> position;
+                cout << endl
+                     << endl;
+                if (!bd.place(position, currSymbol))
+                {
+                    cout << "Not a valid move !!! Enter a correct \n";
+                }
+                else
+                {
+                    vector<pair<int, int>> winCell = WinLine(bd, currSymbol);
+                    if (!winCell.empty())
+                    {
+                        bd.display(winCell);
+                        cout << endl
+                             << currentPlayer << " WINS round " << round << "!\n\n";
+                        if (currSymbol == 'X')
+                            p1Score++;
+                        else
+                            p2Score++;
+                        break;
+                    }
 
-                movesCount++;
+                    if (currSymbol == 'X')
+                        currSymbol = 'O';
+                    else
+                        currSymbol = 'X';
+
+                    movesCount++;
+                }
+            }
+            if (movesCount == 9)
+            {
+                bd.display();
+                cout << "It's a draw!\n";
             }
         }
-
-        bd.display();
-        cout << "It's a draw!\n";
+        cout << "final result : ";
+        if (p1Score > p2Score)
+        {
+            cout << username1 << " wins the series!\n\n";
+        }
+        else if (p1Score < p2Score)
+        {
+            cout << username2 << " wins the series!\n\n";
+        }
+        else
+        {
+            cout << "Series Draw!\n";
+        }
     }
     else
     {
