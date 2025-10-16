@@ -1,5 +1,6 @@
 //This file is just outline for making Maze Game
 //The main file is Triplay-Console/file1.cpp
+//Now this just has Maze grid generation and display part
 
 #include <iostream>
 #include <vector>
