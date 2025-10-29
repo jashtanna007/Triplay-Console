@@ -100,7 +100,7 @@ public:
         cout << "\nGenerated Maze:\n";
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < m; ++j) {
-                cout << grid[i][j].getSymbol();
+                cout << grid[i][j].getSymbol()<<" ";
             }
             cout << endl;
         }
