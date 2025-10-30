@@ -4,7 +4,8 @@
 #include <algorithm>
 #include <ctime>
 #include <cstdlib>
-#include <string>
+#include <conio.h> // for _getch() on Windows
+#include <iomanip>
 using namespace std;
 
 // =========================== TIC TAC TOE SECTION ===============================
@@ -50,6 +51,7 @@ public:
                 for (auto &cell : winCell)
                     if (cell.first == i && cell.second == j)
                         winBox = true;
+
                 char m = grid[i][j].getmark();
                 if (m == ' ')
                     cout << "   ";
@@ -111,8 +113,7 @@ class Maze
         random_shuffle(dirs.begin(), dirs.end());
         for (auto &d : dirs)
         {
-            int nr = r + d.first;
-            int nc = c + d.second;
+            int nr = r + d.first, nc = c + d.second;
             if (isValid(nr, nc) && grid[nr][nc] == '#')
             {
                 grid[r + d.first / 2][c + d.second / 2] = ' ';
@@ -154,10 +155,9 @@ public:
 
         while (!q.empty())
         {
-            pair<int, int> current = q.front();
+            auto curr = q.front();
             q.pop();
-            int r = current.first;
-            int c = current.second;
+            int r = curr.first, c = curr.second;
 
             if (make_pair(r, c) == end)
                 return dist[r][c];
@@ -165,211 +165,388 @@ public:
             for (auto &mv : moves)
             {
                 int nr = r + mv.first, nc = c + mv.second;
-                if (nr >= 0 && nc >= 0 && nr < rows && nc < cols &&
-                    dist[nr][nc] == -1 &&
-                    (grid[nr][nc] == ' ' || grid[nr][nc] == 'E'))
+                if (nr >= 0 && nc >= 0 && nr < rows && nc < cols && dist[nr][nc] == -1 && (grid[nr][nc] == ' ' || grid[nr][nc] == 'E'))
                 {
                     dist[nr][nc] = dist[r][c] + 1;
-                    q.push(make_pair(nr, nc));
+                    q.push({nr, nc});
                 }
             }
         }
         return -1;
     }
 
-    void print(pair<int, int> pos) const
+    friend ostream &operator<<(ostream &out, const Maze &m)
     {
-        for (int i = 0; i < rows; i++)
+        for (auto &row : m.grid)
         {
-            for (int j = 0; j < cols; j++)
-            {
-                if (make_pair(i, j) == pos)
-                    cout << "P";
-                else
-                    cout << grid[i][j];
-            }
-            cout << endl;
+            for (auto &cell : row)
+                out << cell;
+            out << endl;
         }
+        return out;
     }
 
-    bool isEmpty(int r, int c) const { return grid[r][c] == ' ' || grid[r][c] == 'E'; }
+    char operator()(int i, int j) const { return grid[i][j]; }
     pair<int, int> getStart() const { return start; }
     pair<int, int> getEnd() const { return end; }
     int getRows() const { return rows; }
     int getCols() const { return cols; }
-    char at(int i, int j) const { return grid[i][j]; }
+    bool isEmpty(int r, int c) const { return grid[r][c] == ' ' || grid[r][c] == 'E'; }
+};
+
+class Player
+{
+protected:
+    pair<int, int> pos;
+    string name;
+
+public:
+    Player(string n = "Player") : name(n) {}
+    virtual ~Player() {}
+    void setStart(pair<int, int> s) { pos = s; }
+    pair<int, int> getPos() const { return pos; }
+    virtual pair<int, int> makeMove(const Maze &maze) = 0;
+};
+
+class HumanPlayer : public Player
+{
+public:
+    HumanPlayer(string n = "Player") : Player(n) {}
+    pair<int, int> makeMove(const Maze &maze) override
+    {
+        char ch = _getch();
+        int r = pos.first, c = pos.second;
+        if (ch == 'w' || ch == 'W')
+            r--;
+        else if (ch == 's' || ch == 'S')
+            r++;
+        else if (ch == 'a' || ch == 'A')
+            c--;
+        else if (ch == 'd' || ch == 'D')
+            c++;
+        if (maze.isEmpty(r, c))
+            pos = {r, c};
+        return pos;
+    }
 };
 
 class MazeRunner
 {
     Maze *maze;
-    pair<int, int> pos;
-    string name;
+    Player *player;
 
 public:
-    MazeRunner(int r, int c, string n)
+    MazeRunner(int r, int c, string name)
     {
         maze = new Maze(r, c);
         maze->generate();
-        name = n;
-        pos = maze->getStart();
+        player = new HumanPlayer(name);
+        player->setStart(maze->getStart());
     }
-    ~MazeRunner() { delete maze; }
+    ~MazeRunner()
+    {
+        delete maze;
+        delete player;
+    }
 
     void play()
     {
         int minMoves = maze->shortestPath();
-        cout << "\nMinimum moves to solve: " << minMoves << "\n";
-        cout << "\nUse W/A/S/D then Enter to move.\n";
+        cout << "\nGenerated Maze (Minimum moves to solve: " << minMoves << ")\n\n";
+        cout << *maze;
+        cout << "\nPress any key to start moving...\n";
+        _getch();
 
         int moveCount = 0;
         clock_t startTime = clock();
+
         while (true)
         {
-            maze->print(pos);
-            cout << "\nYour move: ";
-            char ch;
-            cin >> ch;
-            int r = pos.first, c = pos.second;
-            if (ch == 'w' || ch == 'W')
-                r--;
-            else if (ch == 's' || ch == 'S')
-                r++;
-            else if (ch == 'a' || ch == 'A')
-                c--;
-            else if (ch == 'd' || ch == 'D')
-                c++;
+            system("cls");
+            for (int i = 0; i < maze->getRows(); i++)
+            {
+                for (int j = 0; j < maze->getCols(); j++)
+                {
+                    if (player->getPos() == make_pair(i, j))
+                        cout << "P";
+                    else
+                        cout << (*maze)(i, j);
+                }
+                cout << endl;
+            }
 
-            if (maze->isEmpty(r, c))
-                pos = {r, c};
+            cout << "\nUse W/A/S/D to move.\n";
+            player->makeMove(*maze);
             moveCount++;
 
-            if (pos == maze->getEnd())
+            if (player->getPos() == maze->getEnd())
             {
+                system("cls");
                 clock_t endTime = clock();
                 double timeTaken = double(endTime - startTime) / CLOCKS_PER_SEC;
-                cout << "\n🎉 You reached the exit! 🎉\n";
+
+                cout << "\n🎉 Congratulations! You reached the exit! 🎉\n";
+                cout << "--------------------------------------------\n";
                 cout << "Minimum possible moves: " << minMoves << endl;
-                cout << "Your total moves: " << moveCount << endl;
-                cout << "Time taken: " << timeTaken << " sec\n";
+                cout << "Your total moves:       " << moveCount << endl;
+                cout << "Time taken:             " << timeTaken << " seconds\n";
+
+                double efficiency = (double)minMoves / moveCount;
+                if (efficiency > 1.0)
+                    efficiency = 1.0;
+                int score = (int)(70 + efficiency * 30 - (timeTaken * 0.7));
+                score = max(0, min(100, score));
+
+                cout << "--------------------------------------------\n";
+                cout << " Final Score: " << score << " / 100\n";
+                cout << "--------------------------------------------\n";
                 break;
             }
-            system("clear"); // works on mac/linux; ignored on windows
-            system("cls");   // works on windows; ignored on mac/linux
         }
     }
 };
 
-// ============================ KNIGHT’S TOUR SECTION ===============================
+// ============================ KNIGHT TOUR SECTION ===============================
 
-class KnightsTour
+class Game
 {
-    int N;
-    pair<int, int> knight;
-    vector<pair<int, int>> moves;
+public:
+    virtual void startGame() = 0;
+    virtual ~Game() {}
+};
+
+class KnightTour : public Game
+{
+    int size;
+    int **board;
+    int knightX, knightY;
+    int movesDone;
 
 public:
-    KnightsTour(int n) : N(n)
+    KnightTour(int n)
     {
-        knight = {0, 0};
-        moves = {{2, 1}, {1, 2}, {-1, 2}, {-2, 1}, {-2, -1}, {-1, -2}, {1, -2}, {2, -1}};
+        size = n;
+        board = new int *[size];
+        for (int i = 0; i < size; i++)
+        {
+            board[i] = new int[size];
+            for (int j = 0; j < size; j++)
+                board[i][j] = 0;
+        }
+        knightX = 0;
+        knightY = 0;
+        movesDone = 1;
+        board[knightX][knightY] = movesDone;
+    }
+    ~KnightTour()
+    {
+        for (int i = 0; i < size; i++)
+            delete[] board[i];
+        delete[] board;
     }
 
-    void showBoard()
+    int &operator()(int x, int y) { return board[x][y]; }
+
+    void displayBoard()
     {
-        vector<vector<char>> board(N, vector<char>(N, '.'));
-        board[knight.first][knight.second] = 'K';
-
-        cout << "\nPossible moves from current position:\n";
-        for (auto &m : moves)
+        cout << "\nKnight's Tour Board:\n";
+        for (int i = 0; i < size; i++)
         {
-            int nr = knight.first + m.first, nc = knight.second + m.second;
-            if (nr >= 0 && nc >= 0 && nr < N && nc < N)
-                board[nr][nc] = '*';
-        }
-
-        for (int i = 0; i < N; i++)
-        {
-            for (int j = 0; j < N; j++)
-                cout << board[i][j] << " ";
+            for (int j = 0; j < size; j++)
+            {
+                if (i == knightX && j == knightY)
+                    cout << setw(3) << "K";
+                else if (board[i][j] > 0)
+                    cout << setw(3) << "#";
+                else
+                    cout << setw(3) << ".";
+            }
             cout << endl;
         }
     }
+
+    friend bool isValidMove(KnightTour &kt, int newX, int newY);
+
+    bool isComplete() { return movesDone == size * size; }
+
+    void startGame() override
+    {
+        cout << "\nWelcome to Knight's Tour Game!\n";
+        cout << "You must visit every square exactly once.\n";
+        cout << "Enter move numbers (1-8) for the knight's moves.\n";
+
+        int dx[8] = {-2, -2, -1, -1, 1, 1, 2, 2};
+        int dy[8] = {-1, 1, -2, 2, -2, 2, -1, 1};
+
+        while (true)
+        {
+            displayBoard();
+
+            if (isComplete())
+            {
+                cout << "\n🎉 Congratulations! You completed the Knight's Tour!\n";
+                break;
+            }
+
+            cout << "\nPossible moves (1-8):\n";
+            for (int i = 0; i < 8; i++)
+                cout << i + 1 << ". (" << dx[i] << "," << dy[i] << ")\n";
+
+            int move;
+            cout << "Choose your move (1-8): ";
+            cin >> move;
+
+            if (move < 1 || move > 8)
+            {
+                cout << "Invalid move number!\n";
+                continue;
+            }
+
+            int newX = knightX + dx[move - 1];
+            int newY = knightY + dy[move - 1];
+
+            if (isValidMove(*this, newX, newY))
+            {
+                knightX = newX;
+                knightY = newY;
+                movesDone++;
+                board[knightX][knightY] = movesDone;
+            }
+            else
+            {
+                cout << "❌ Invalid move! Try again.\n";
+            }
+
+            bool stuck = true;
+            for (int i = 0; i < 8; i++)
+            {
+                int nx = knightX + dx[i];
+                int ny = knightY + dy[i];
+                if (isValidMove(*this, nx, ny))
+                    stuck = false;
+            }
+
+            if (stuck)
+            {
+                displayBoard();
+                cout << "\n💀 No valid moves left! Game Over.\n";
+                cout << "You visited " << movesDone << " squares.\n";
+                break;
+            }
+        }
+    }
 };
+
+bool isValidMove(KnightTour &kt, int newX, int newY)
+{
+    return (newX >= 0 && newY >= 0 &&
+            newX < kt.size && newY < kt.size &&
+            kt.board[newX][newY] == 0);
+}
 
 // =============================== MAIN MENU ===============================
 
 int main()
 {
-    while (true)
-    {
-        cout << "\n===== GAME HUB =====\n";
-        cout << "1. Tic Tac Toe\n";
-        cout << "2. Maze Runner\n";
-        cout << "3. Knight’s Tour (Static)\n";
-        cout << "4. Exit\n";
-        cout << "Enter choice: ";
-        int choice;
-        cin >> choice;
+    int choice;
+    cout << "Enter your choice accordingly\n";
+    cout << "1. Tic Tac Toe\n2. Maze Runner\n3. Knight Tour\n\n";
+    cin >> choice;
+    cout << endl;
 
-        if (choice == 1)
+    if (choice == 1)
+    {
+        string username1, username2;
+        cout << "Enter Player1 name: ";
+        cin >> username1;
+        cout << "\nEnter Player2 name: ";
+        cin >> username2;
+        int series;
+        cout << "\nBest of series (1/3/5): ";
+        cin >> series;
+        cout << endl;
+
+        int minwins = (series / 2) + 1, p1Score = 0, p2Score = 0, round = 0;
+        while (p1Score < minwins && p2Score < minwins && round < series)
         {
-            string p1, p2;
-            cout << "Enter Player1 name: ";
-            cin >> p1;
-            cout << "Enter Player2 name: ";
-            cin >> p2;
-            Board b;
-            int moves = 0;
-            char sym = 'X';
-            while (moves < 9)
+            round++;
+            cout << "--------------- Round " << round << " ---------------\n\n";
+            Board bd;
+            int movesCount = 0;
+            char currSymbol = (round % 2 == 0) ? 'O' : 'X';
+            string currentPlayer;
+
+            while (movesCount < 9)
             {
-                b.display();
-                cout << (sym == 'X' ? p1 : p2) << " (" << sym << ") enter position (1-9): ";
-                int pos;
-                cin >> pos;
-                if (!b.place(pos, sym))
-                    cout << "Invalid move!\n";
+                bd.display();
+                currentPlayer = (currSymbol == 'X') ? username1 : username2;
+                cout << endl
+                     << currentPlayer << " (" << currSymbol << ") Enter position (1-9): ";
+                int position;
+                cin >> position;
+                cout << endl;
+                if (!bd.place(position, currSymbol))
+                    cout << "Not a valid move! Try again.\n";
                 else
                 {
-                    auto win = WinLine(b, sym);
-                    if (!win.empty())
+                    vector<pair<int, int>> winCell = WinLine(bd, currSymbol);
+                    if (!winCell.empty())
                     {
-                        b.display(win);
-                        cout << (sym == 'X' ? p1 : p2) << " wins!\n";
+                        bd.display(winCell);
+                        cout << endl
+                             << currentPlayer << " wins round " << round << "!\n\n";
+                        if (currSymbol == 'X')
+                            p1Score++;
+                        else
+                            p2Score++;
                         break;
                     }
-                    sym = (sym == 'X') ? 'O' : 'X';
-                    moves++;
+                    currSymbol = (currSymbol == 'X') ? 'O' : 'X';
+                    movesCount++;
                 }
             }
+            if (movesCount == 9)
+            {
+                bd.display();
+                cout << "It's a draw!\n";
+            }
         }
-        else if (choice == 2)
-        {
-            string name;
-            cout << "Enter your name: ";
-            cin >> name;
-            int r, c;
-            cout << "Enter maze size (odd numbers, e.g. 15 15): ";
-            cin >> r >> c;
-            MazeRunner game(r, c, name);
-            game.play();
-        }
-        else if (choice == 3)
-        {
-            int n;
-            cout << "Enter board size (e.g., 8): ";
-            cin >> n;
-            KnightsTour kt(n);
-            kt.showBoard();
-        }
-        else if (choice == 4)
-        {
-            cout << "Exiting... Bye!\n";
-            break;
-        }
+        cout << "Final Result: ";
+        if (p1Score > p2Score)
+            cout << username1 << " wins the series!\n\n";
+        else if (p1Score < p2Score)
+            cout << username2 << " wins the series!\n\n";
         else
-            cout << "Invalid choice!\n";
+            cout << "Series Draw!\n";
     }
+
+    else if (choice == 2)
+    {
+        string name;
+        cout << "Enter your name: ";
+        cin >> name;
+        int r, c;
+        cout << "Enter maze dimensions (odd numbers recommended, e.g. 15 15): ";
+        cin >> r >> c;
+        MazeRunner game(r, c, name);
+        game.play();
+    }
+
+    else if (choice == 3)
+    {
+        int n;
+        cout << "Enter the size of the chessboard (e.g., 5 for 5x5): ";
+        cin >> n;
+        if (n < 3)
+        {
+            cout << "Board size too small for a knight's tour!\n";
+            return 0;
+        }
+        KnightTour game(n);
+        game.startGame();
+    }
+
+    else
+        cout << "Invalid choice!\n";
     return 0;
 }
